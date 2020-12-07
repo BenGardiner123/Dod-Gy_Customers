@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using System.Data.SqlClient;
 using DBConnExample.models;
 using Microsoft.Extensions.Configuration;
+using System.Data;
+using System.Text.RegularExpressions;
+using System;
 
 namespace DBConnExample.Controllers
 {
@@ -32,16 +35,62 @@ namespace DBConnExample.Controllers
         }
 
 
-        [HttpGet("{searchString}")]
-        public List<Customer> GetCustomer(string searchString) {
-            List<Customer> customers = new List<Customer>();
+            [HttpGet("{searchString}")]
+            public List<Customer> GetCustomer(string searchString) {
+                List<Customer> customers = new List<Customer>();
+                
+                if(Regex.IsMatch(searchString, @"^[a-zA-Z]+$"))
+                {
+                    try
+                    {
+                        SqlConnection conn = new SqlConnection(this.connectionString);
 
-            // code goes here       
+                        string queryString = "Select * From Customer WHERE LastName = @lastname";
 
-            return customers;
+                        SqlCommand command = new SqlCommand(queryString, conn);
+                        command.Parameters.Add("@lastname", SqlDbType.VarChar, 50).Value = searchString;
+                
+
+                        conn.Open();
+                
+                        string result = "";
+                        using(SqlDataReader reader = command.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                result += reader[0].ToString() + reader[1].ToString() + reader[2].ToString() + "\n";
+                                
+                                // ORM - Object Relation Mapping
+                                customers.Add(
+                                    new Customer() { Id = (int)reader[0], FirstName = reader[1].ToString(), Surname = reader[2].ToString()});                
+                            }
+                            
+                        }
+                        conn.Close();
+
+                        return customers;
+                    }
+                    catch (SqlException ex)
+                    {
+                        throw new ApplicationException($"Some sql error happened + {ex}");
+                    }
+
+
+                }
+                else
+                {
+
+                    throw new ArgumentException($"Incorrect user input {searchString}");
+
+                }
+
+
+               
+            }
+
+           
         }
 
     }
 
     
-}
